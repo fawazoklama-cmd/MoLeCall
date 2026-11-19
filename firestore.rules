@@ -1,0 +1,184 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidPublicProfile(data) {
+      return data.keys().hasAll([
+        'uid', 'username', 'playerId', 'avatar', 'rankTier', 'rankPoints', 'level', 'exp', 'wins', 'losses', 'totalMatches'
+      ])
+      && data.keys().hasOnly([
+        'uid', 'username', 'playerId', 'avatar', 'borderId', 'rankTier', 'rankPoints',
+        'level', 'exp', 'wins', 'losses', 'totalMatches', 'favoriteHeroId', 'onlineStatus', 'updatedAt'
+      ])
+      && isValidId(data.uid)
+      && data.uid == request.auth.uid
+      && data.username is string && data.username.size() >= 2 && data.username.size() <= 24
+      && data.playerId is string && data.playerId.size() >= 4 && data.playerId.size() <= 24
+      && data.avatar is string && data.avatar.size() >= 1 && data.avatar.size() <= 64
+      && (!('borderId' in data) || (data.borderId is string && data.borderId.size() >= 1 && data.borderId.size() <= 64))
+      && data.rankTier in ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Master', 'Grandmaster', 'Challenger']
+      && data.rankPoints is number && data.rankPoints >= 0 && data.rankPoints <= 100000
+      && data.level is number && data.level >= 1 && data.level <= 500
+      && data.exp is number && data.exp >= 0 && data.exp <= 10000000
+      && data.wins is number && data.wins >= 0 && data.wins <= 100000
+      && data.losses is number && data.losses >= 0 && data.losses <= 100000
+      && data.totalMatches is number && data.totalMatches >= 0 && data.totalMatches <= 200000
+      && (!('favoriteHeroId' in data) || (data.favoriteHeroId is string && data.favoriteHeroId.size() >= 1 && data.favoriteHeroId.size() <= 40))
+      && (!('onlineStatus' in data) || (data.onlineStatus in ['online', 'offline', 'in_match']))
+      && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    function isValidPrivateProfile(data) {
+      return data.keys().hasAll(['uid', 'aetherShards', 'ownedHeroIds'])
+      && data.keys().hasOnly([
+        'uid', 'email', 'aetherShards', 'ownedHeroIds', 'ownedSkinIds',
+        'ownedEmoteIds', 'ownedBorderIds', 'ownedAvatarIds', 'achievements', 'settings', 'updatedAt'
+      ])
+      && isValidId(data.uid)
+      && data.uid == request.auth.uid
+      && (!('email' in data) || (data.email is string && data.email.size() <= 160))
+      && data.aetherShards is number && data.aetherShards >= 0 && data.aetherShards <= 100000000
+      && data.ownedHeroIds is list && data.ownedHeroIds.size() <= 64
+      && (data.ownedHeroIds.size() == 0 || data.ownedHeroIds[0] is string)
+      && (!('ownedSkinIds' in data) || (data.ownedSkinIds is list && data.ownedSkinIds.size() <= 128))
+      && (!('ownedEmoteIds' in data) || (data.ownedEmoteIds is list && data.ownedEmoteIds.size() <= 64))
+      && (!('ownedBorderIds' in data) || (data.ownedBorderIds is list && data.ownedBorderIds.size() <= 64))
+      && (!('ownedAvatarIds' in data) || (data.ownedAvatarIds is list && data.ownedAvatarIds.size() <= 64))
+      && (!('achievements' in data) || (data.achievements is list && data.achievements.size() <= 64))
+      && (!('settings' in data) || data.settings is map)
+      && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    function isValidFriendship(data) {
+      return data.keys().hasAll([
+        'requesterUid', 'recipientUid', 'requesterName', 'recipientName', 'status', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'requesterUid', 'recipientUid', 'requesterName', 'recipientName', 'status', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.requesterUid)
+      && isValidId(data.recipientUid)
+      && data.requesterUid != data.recipientUid
+      && data.requesterName is string && data.requesterName.size() >= 1 && data.requesterName.size() <= 32
+      && data.recipientName is string && data.recipientName.size() >= 1 && data.recipientName.size() <= 32
+      && data.status in ['pending', 'accepted']
+      && data.createdAt is string && data.createdAt.size() <= 64
+      && data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidMatchRecord(data) {
+      return data.keys().hasAll([
+        'ownerUid', 'mode', 'heroId', 'result', 'kills', 'deaths', 'assists', 'goldEarned', 'durationSec', 'createdAt'
+      ])
+      && data.keys().hasOnly([
+        'ownerUid', 'mode', 'difficulty', 'heroId', 'result', 'kills', 'deaths', 'assists', 'goldEarned', 'durationSec', 'createdAt'
+      ])
+      && isValidId(data.ownerUid)
+      && data.ownerUid == request.auth.uid
+      && data.mode in ['offline_ai', 'online_demo', 'online_5v5']
+      && (!('difficulty' in data) || data.difficulty in ['easy', 'normal', 'hard', 'ranked'])
+      && data.heroId is string && data.heroId.size() >= 1 && data.heroId.size() <= 40
+      && data.result in ['victory', 'defeat']
+      && data.kills is number && data.kills >= 0 && data.kills <= 200
+      && data.deaths is number && data.deaths >= 0 && data.deaths <= 200
+      && data.assists is number && data.assists >= 0 && data.assists <= 200
+      && data.goldEarned is number && data.goldEarned >= 0 && data.goldEarned <= 500000
+      && data.durationSec is number && data.durationSec >= 1 && data.durationSec <= 14400
+      && data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    // 1. Public player profiles (leaderboards & friend search)
+    match /usersPublic/{userId} {
+      allow get: if isValidId(userId) && isSignedIn();
+      allow list: if isSignedIn() && resource.data.rankPoints >= 0 && request.query.limit <= 50;
+      allow create: if isValidId(userId) && isOwner(userId) && isValidPublicProfile(incoming());
+      allow update: if isValidId(userId) && isOwner(userId) && isValidPublicProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().playerId == existing().playerId
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'username', 'avatar', 'borderId', 'rankTier', 'rankPoints',
+          'level', 'exp', 'wins', 'losses', 'totalMatches', 'favoriteHeroId', 'onlineStatus', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    // 2. Private player PII, inventory & settings
+    match /usersPrivate/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId) && isOwner(userId) && isValidPrivateProfile(incoming());
+      allow update: if isValidId(userId) && isOwner(userId) && isValidPrivateProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'email', 'aetherShards', 'ownedHeroIds', 'ownedSkinIds',
+          'ownedEmoteIds', 'ownedBorderIds', 'ownedAvatarIds', 'achievements', 'settings', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    // 3. Friendships (Participant-scoped)
+    match /friendships/{friendshipId} {
+      allow get: if isValidId(friendshipId) && isSignedIn() && (
+        request.auth.uid == existing().requesterUid || request.auth.uid == existing().recipientUid
+      );
+      allow list: if isSignedIn() && (
+        request.auth.uid == resource.data.requesterUid || request.auth.uid == resource.data.recipientUid
+      );
+      allow create: if isValidId(friendshipId) && isSignedIn()
+        && isValidFriendship(incoming())
+        && incoming().requesterUid == request.auth.uid
+        && incoming().status == 'pending';
+      allow update: if isValidId(friendshipId) && isSignedIn()
+        && isValidFriendship(incoming())
+        && existing().status == 'pending'
+        && request.auth.uid == existing().recipientUid
+        && incoming().requesterUid == existing().requesterUid
+        && incoming().recipientUid == existing().recipientUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().status == 'accepted'
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if isValidId(friendshipId) && isSignedIn() && (
+        request.auth.uid == existing().requesterUid || request.auth.uid == existing().recipientUid
+      );
+    }
+
+    // 4. Match History (Owner-only immutable logs)
+    match /matches/{matchId} {
+      allow get: if isValidId(matchId) && isSignedIn() && existing().ownerUid == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isValidId(matchId) && isSignedIn() && isValidMatchRecord(incoming());
+      allow update, delete: if false;
+    }
+
+    // 5. Public Game News
+    match /news/{newsId} {
+      allow get, list: if true;
+      allow write: if false;
+    }
+  }
+}

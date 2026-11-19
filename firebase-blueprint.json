@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "PublicProfile": {
+      "title": "PublicProfile",
+      "description": "Public MoLeCall player profile visible on leaderboards, friend searches, and lobbies.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "username": { "type": "string", "minLength": 2, "maxLength": 24 },
+        "playerId": { "type": "string", "minLength": 4, "maxLength": 24, "pattern": "^[a-zA-Z0-9_\\-#]+$" },
+        "avatar": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "borderId": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "rankTier": {
+          "type": "string",
+          "enum": ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master", "Grandmaster", "Challenger"]
+        },
+        "rankPoints": { "type": "number" },
+        "level": { "type": "number" },
+        "exp": { "type": "number" },
+        "wins": { "type": "number" },
+        "losses": { "type": "number" },
+        "totalMatches": { "type": "number" },
+        "favoriteHeroId": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "onlineStatus": { "type": "string", "enum": ["online", "offline", "in_match"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "username", "playerId", "avatar", "rankTier", "rankPoints", "level", "exp", "wins", "losses", "totalMatches"]
+    },
+    "PrivateProfile": {
+      "title": "PrivateProfile",
+      "description": "Owner-only PII, virtual currency, inventory, and client settings.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 160 },
+        "aetherShards": { "type": "number" },
+        "ownedHeroIds": { "type": "array" },
+        "ownedSkinIds": { "type": "array" },
+        "ownedEmoteIds": { "type": "array" },
+        "ownedBorderIds": { "type": "array" },
+        "ownedAvatarIds": { "type": "array" },
+        "achievements": { "type": "array" },
+        "settings": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "aetherShards", "ownedHeroIds"]
+    },
+    "Friendship": {
+      "title": "Friendship",
+      "description": "Friend request or established friendship between two players.",
+      "type": "object",
+      "properties": {
+        "requesterUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "recipientUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "requesterName": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "recipientName": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "status": { "type": "string", "enum": ["pending", "accepted"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["requesterUid", "recipientUid", "requesterName", "recipientName", "status", "createdAt", "updatedAt"]
+    },
+    "MatchRecord": {
+      "title": "MatchRecord",
+      "description": "Player match summary persisted for match history.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "mode": { "type": "string", "enum": ["offline_ai", "online_demo", "online_5v5"] },
+        "difficulty": { "type": "string", "enum": ["easy", "normal", "hard", "ranked"] },
+        "heroId": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "result": { "type": "string", "enum": ["victory", "defeat"] },
+        "kills": { "type": "number" },
+        "deaths": { "type": "number" },
+        "assists": { "type": "number" },
+        "goldEarned": { "type": "number" },
+        "durationSec": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "mode", "heroId", "result", "kills", "deaths", "assists", "goldEarned", "durationSec", "createdAt"]
+    },
+    "NewsItem": {
+      "title": "NewsItem",
+      "description": "Read-only game patch notes and announcements.",
+      "type": "object",
+      "properties": {
+        "titleId": { "type": "string", "maxLength": 140 },
+        "titleEn": { "type": "string", "maxLength": 140 },
+        "category": { "type": "string", "enum": ["update", "hero", "balance", "event", "patch"] },
+        "publishedAt": { "type": "string" }
+      },
+      "required": ["titleId", "titleEn", "category", "publishedAt"]
+    }
+  },
+  "firestore": {
+    "/usersPublic/{userId}": {
+      "schema": { "$ref": "#/entities/PublicProfile" },
+      "description": "Public player profile and leaderboard card."
+    },
+    "/usersPrivate/{userId}": {
+      "schema": { "$ref": "#/entities/PrivateProfile" },
+      "description": "Private player PII, inventory, and settings."
+    },
+    "/friendships/{friendshipId}": {
+      "schema": { "$ref": "#/entities/Friendship" },
+      "description": "Social friend requests and accepted friendships."
+    },
+    "/matches/{matchId}": {
+      "schema": { "$ref": "#/entities/MatchRecord" },
+      "description": "Player match history records."
+    },
+    "/news/{newsId}": {
+      "schema": { "$ref": "#/entities/NewsItem" },
+      "description": "Public game news and patch announcements."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "MoLeCall",
+  "description": "MoLeCall — 2.5D Multiplayer Fantasy MOBA Game Platform. Call Your Power. Rule The Battle. Developed by VennDev, Website Request by Callysta.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
